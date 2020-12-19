@@ -89,30 +89,6 @@ def extract_annotations(json_path, annotation_path):
         print([x,y,w,h])
         print(d["category_id"])
         print(img_ids[d["image_id"]])
-        
-
-def train_test_split(img_path, frame_rate):
-    #get all annotation fnames
-    fnames = []
-    for fname in os.listdir(img_path):
-        fnames.append("/home/blaskoli/data/" + fname[:-3] + "jpg")
-    
-    #shuffle them
-    random.shuffle(fnames)
-
-    #75% train split
-    train_threshold = math.floor(FRAMES_CUT*(3/4))
-
-    train_file = open("./train.txt", "w")
-    test_file = open("./test.txt", "w")
-    
-    for i in range(0, train_threshold, frame_rate):
-        train_file.write(fnames[i] + "\n")
-
-    for i in range(train_threshold, FRAMES_CUT, frame_rate):
-        test_file.write(fnames[i] + "\n")
-    print(fnames)
-
 
 def test_annotaion(data_path):
     
@@ -179,7 +155,7 @@ def zip_data():
 
 
 #extract_annotations(constants.JSON_PATH, constants.ANNOTATION_PATH)
-test_annotaion(constants.DATA_PATH)
+#test_annotaion(constants.DATA_PATH)
 
 #train_test_split("/home/blaskoli/data", 10)
 #test_annotaion("/home/oliver/School/SUMMER_2020/airport-apron-object-detection/data/hong_kong/raw_annotations")
