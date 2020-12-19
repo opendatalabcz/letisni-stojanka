@@ -153,9 +153,28 @@ def zip_data():
     print(all_fnames)
     command = os.popen('zip {}/my_data.zip {}'.format(DATA_PATH, all_fnames))
 
+def test_mathcing_files(annotation_path, frames_path):
+    annotations = []
+    frames = []
+
+    for fname in os.listdir(annotation_path):
+        annotations.append(fname)
+
+    for fname in os.listdir(frames_path):
+        frames.append(fname)
+    
+    annotations.sort()
+    frames.sort()
+
+    for i in range(len(annotations)):
+        if annotations[i][:-3] != frames[i][:-3]:
+            print(annotations[i], frames[i])
+            break
+
 
 #extract_annotations(constants.JSON_PATH, constants.ANNOTATION_PATH)
 #test_annotaion(constants.DATA_PATH)
+test_mathcing_files(constants.ANNOTATION_PATH, constants.FRAMES_PATH)
 
 #train_test_split("/home/blaskoli/data", 10)
 #test_annotaion("/home/oliver/School/SUMMER_2020/airport-apron-object-detection/data/hong_kong/raw_annotations")

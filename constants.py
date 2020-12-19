@@ -14,5 +14,6 @@ VIDEO_PATH = "/home/oliver/School/THESIS/data/hong_kong/hong_kong.mp4"
 JSON_PATH = "/home/oliver/School/THESIS/data/hong_kong/instances_default.json"
 EXAMPLE_IMG = "/home/oliver/School/THESIS/data/hong_kong/frames/frame_000125.jpg"
 ANNOTATION_PATH = "/home/oliver/School/THESIS/data/hong_kong/annotations"
+FRAMES_PATH = "/home/oliver/School/THESIS/data/hong_kong/frames"
 
 DATA_PATH = "/home/oliver/School/THESIS/data/hong_kong"
