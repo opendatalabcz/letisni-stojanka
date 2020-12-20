@@ -18,9 +18,10 @@ import pandas as pd
 import time
 
 
-CONFIG_PATH = "model/data.cfg"
-WEIGHTS_PATH = "model/weights.weights"
-LABELS_PATH = "model/data.names"
+CONFIG_PATH = "model/yolo-obj.cfg"
+WEIGHTS_PATH = "model/yolo-obj_last.weights"
+LABELS_PATH = "model/obj.names"
+TEST_FRAMES = "/home/oliver/School/THESIS/data/hong_kong/test_frames"
 
 class Inferencer:
     def __init__(self):
@@ -59,16 +60,17 @@ class Inferencer:
 
         print(classIDs)           
         for i in classIDs:
+            print(i)
             (x, y) = (boxes[i][0], boxes[i][1])
             (w, h) = (boxes[i][2], boxes[i][3])
             
             for label in self.LABELS:
                 if self.LABELS[classIDs[i]] == label:
                     color = (0, 0, 0)
-                    cv2.rectangle(image, (x, y), (x + w, y + h), color, 1)
+                    cv2.rectangle(image, (x, y), (x + w, y + h), color, 2)
                     text = "{}".format(self.LABELS[classIDs[i]])
                     cv2.putText(image, text, (x + w, y + h),                  
-                    cv2.FONT_HERSHEY_SIMPLEX,0.5, color, 1)
+                    cv2.FONT_HERSHEY_SIMPLEX,0.5, color, 2)
                 
         return image
 
@@ -82,7 +84,7 @@ class Ui_MainWindow(object):
         self.photo = QtWidgets.QLabel(self.centralwidget)
         self.photo.setGeometry(QtCore.QRect(20, 70, 500, 300))
         self.photo.setText("")
-        self.photo.setPixmap(QtGui.QPixmap("test_imgs/frame_000090.jpg"))
+        self.photo.setPixmap(QtGui.QPixmap(TEST_FRAMES + "/frame_029256.jpg"))
         self.photo.setScaledContents(True)
         self.photo.setObjectName("photo")
         self.pushButton = QtWidgets.QPushButton(self.centralwidget)
@@ -110,10 +112,10 @@ class Ui_MainWindow(object):
         self.pushButton.setText(_translate("MainWindow", "Detect"))
 
     def change_image(self):
-        self.photo.setPixmap(QtGui.QPixmap("test_imgs/frame_000090.jpg"))
+        self.photo.setPixmap(QtGui.QPixmap(TEST_FRAMES + "/frame_029256.jpg"))
 
     def inference_image(self):
-        image = self.Inferencer.inference("test_imgs/frame_000090.jpg")
+        image = self.Inferencer.inference(TEST_FRAMES + "/frame_029256.jpg")
         
         height, width, channel = image.shape
         bytesPerLine = 3 * width
@@ -128,7 +130,6 @@ class Ui_MainWindow(object):
 
 
 if __name__ == "__main__":
-    import sys
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
