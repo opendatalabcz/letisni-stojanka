@@ -7,6 +7,11 @@ import os
 import random
 import math
 import time 
+from matplotlib import pyplot as plt
+from clodsa.augmentors.augmentorFactory import createAugmentor
+from clodsa.transformers.transformerFactory import transformerGenerator
+from clodsa.techniques.techniqueFactory import createTechnique
+import xml.etree.ElementTree as ET 
 
 import constants
 
@@ -90,6 +95,23 @@ def extract_annotations(json_path, annotation_path):
         print(d["category_id"])
         print(img_ids[d["image_id"]])
 
+def show_boxes(image, boxes):
+    img = image.copy()
+    img_h, img_w, c = img.shape
+    color = (34,139,34)
+    for box in boxes:
+        if(len(box)==2):
+            (label, (x, y, w, h))=box
+        else:
+            (label, (x, y, w, h),_)=box
+
+        cv2.rectangle(img, (x,y), (x+w, y+h), (0,255,0), 5)
+        cv2.putText(img, constants.CLASS_NAMES[str(int(label))], (x, y -5),cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+    
+    cv2.imshow("img", img)
+    cv2.waitKey(0)
+
+
 def test_annotaion(data_path):
     
     #create testing folder
@@ -170,11 +192,138 @@ def test_mathcing_files(annotation_path, frames_path):
         if annotations[i][:-3] != frames[i][:-3]:
             print(annotations[i], frames[i])
             break
+def get_frame_names(data_text_format_file):
+    file = open(data_text_format_file, 'r') 
+    lines = file.readlines()
+    new_lines = []
+
+    for i in range(len(lines)):
+        splitted_l = lines[i].split("/")
+        #extract only the frame name and remove the \n char at the end
+        new_lines.append(splitted_l[-1][:-1])
+
+    return new_lines
+
+def copy_for_augment(train_data_text_file, raw_path, augmented_path, last_frame):
+    frame_names = get_frame_names(train_data_text_file)
+    
+    for f in frame_names:
+        train_frame_path = raw_path + "/" + f
+        aug_frame_path = augmented_path + "/" + "frame_" + str(last_frame).zfill(6) + ".jpg"
+        coppy_command = "cp {} {}".format(train_frame_path, aug_frame_path)
+        os.popen(coppy_command)
+
+        frame_label_path = constants.ANNOTATION_PATH + "/" + f[:-3] + "txt"
+        new_label_path = augmented_path + "/" + "frame_" + str(last_frame).zfill(6) + ".txt"
+        os.popen("cp {} {}".format(frame_label_path, new_label_path))
+
+        last_frame += 1
+
+def init_augment(augmented_path):
+    PROBLEM = "detection"
+    ANNOTATION_MODE = "yolo"
+    INPUT_PATH = augmented_path + "/"
+    GENERATION_MODE = "linear"
+    OUTPUT_MODE = "yolo"
+    OUTPUT_PATH= augmented_path + "/" + "yolo_augmentation"
+
+    augmentor = createAugmentor(PROBLEM,ANNOTATION_MODE,OUTPUT_MODE,GENERATION_MODE,INPUT_PATH,{"outputPath":OUTPUT_PATH})
+    transformer = transformerGenerator(PROBLEM)
+
+    return augmentor, transformer
+
+def aug_operation(operation, transformer, img, boxes):
+    gen = transformer(operation)
+    aug_img, aug_boxes = gen.transform(img,boxes)
+    return aug_img, aug_boxes
+
+def load_boxes(img_path, annotation_path):
+    img = cv2.imread(img_path)
+    (img_h, img_w) = img.shape[:2]
+    lines = [line.rstrip('\n') for line in open(annotation_path)]
+    boxes = []
+    if lines != ['']:
+        for line in lines:
+            splits = line.split(" ")
+            label = splits[0]
+            x  = int(float(splits[1])*img_w) 
+            y = int(float(splits[2])*img_h)
+            h = int(float(splits[4])*img_h)
+            w = int(float(splits[3])*img_w)
+            boxes.append((label, (x, y, w, h)))
+    return (img,boxes)
+
+def get_frame_path(frame):
+    return constants.FRAMES_PATH + "/" + frame
+
+def get_annotation_path(frame):
+    return constants.ANNOTATION_PATH + "/" + frame
+
+def augment_data(train_data_text_file, raw_path, augmented_path, last_frame):
+    #1. copy the images from training dataset
+    #copy_for_augment(train_data_text_file, raw_path, augmented_path, last_frame)
+    
+    #2. initliaze augmentor
+    augmentor, transformer = init_augment(augmented_path)
+
+    vFlip = createTechnique("flip",{"flip":0})
+    augmentor.addTransformer(transformer(vFlip))
+
+    hFlip = createTechnique("flip",{"flip":1})
+    augmentor.addTransformer(transformer(hFlip))
+
+    hvFlip = createTechnique("flip",{"flip":-1})
+    augmentor.addTransformer(transformer(hvFlip))
+
+    rotate = createTechnique("rotate", {"angle" : 90})
+    augmentor.addTransformer(transformer(rotate))
+    
+    avgBlur =  createTechnique("average_blurring", {"kernel" : 5})
+    augmentor.addTransformer(transformer(avgBlur))
+
+    hue = createTechnique("raise_hue", {"power" : 0.9})
+    augmentor.addTransformer(transformer(hue))
+
+    frames = []
+    for fname in os.listdir(augmented_path):
+        frames.append(fname)
+
+    for fr in frames:
+        img, boxes = load_boxes(get_frame_path(fr), get_annotation_path(fr[:-3] + "txt"))
+        
+        ver_img, ver_boxes = aug_operation(vFlip, transformer, img, boxes)
+        hor_img, hor_boxes = aug_operation(hFlip, transformer, img, boxes)
+        blur_img, blur_boxes = aug_operation(avgBlur, transformer, img, boxes)
+        hv_img, hv_boxes = aug_operation(hvFlip, transformer, img, boxes)
+        hue_img, hue_boxes = aug_operation(hue, transformer, img, boxes)
+
+        show_boxes(img, boxes)
+        show_boxes(ver_img, ver_boxes)
+        show_boxes(hor_img, hor_boxes)
+        show_boxes(blur_img, blur_boxes)
+        show_boxes(hv_img, hv_boxes)
+        show_boxes(hue_img, hue_boxes)
+        
+        return
+
+
+
+
+
 
 
 #extract_annotations(constants.JSON_PATH, constants.ANNOTATION_PATH)
 #test_annotaion(constants.DATA_PATH)
-test_mathcing_files(constants.ANNOTATION_PATH, constants.FRAMES_PATH)
+#test_mathcing_files(constants.ANNOTATION_PATH, constants.FRAMES_PATH)
+
+#augment_data("/home/oliver/School/THESIS/letisni-stojanka/model/train.txt", constants.FRAMES_PATH, \
+#              "/home/oliver/School/THESIS/letisni-stojanka/augmented_frames", 50423)
+
+augment_data("/home/oliver/School/THESIS/letisni-stojanka/model/train.txt", constants.FRAMES_PATH, \
+              "/home/oliver/School/THESIS/data/hong_kong/test_frames", 50423)
+
+#show_boxes("/home/oliver/School/THESIS/data/hong_kong/frames/frame_000000.jpg", \
+#           "/home/oliver/School/THESIS/data/hong_kong/annotations/frame_000000.txt")
 
 #train_test_split("/home/blaskoli/data", 10)
 #test_annotaion("/home/oliver/School/SUMMER_2020/airport-apron-object-detection/data/hong_kong/raw_annotations")
