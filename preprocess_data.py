@@ -17,15 +17,15 @@ import constants
 
 FRAMES_PATH = './data'
 FRAMES_CUT = 17500
-
+TOTAL_FRAMES = 104422
 DATA_PATH = "/home/oliver/School/SUMMER_2020/airport-apron-object-detection/data/hong_kong"
 
 def extract_frames(video_path, frames_path):
     cam = cv2.VideoCapture(video_path)   
-    os.makedirs("frames") 
     # frame 
-    current_frame = 0
-    
+    current_frame = TOTAL_FRAMES
+    current_frame += 1
+
     while(True): 
         # reading from frame 
         ret,frame = cam.read() 
@@ -33,7 +33,7 @@ def extract_frames(video_path, frames_path):
         if ret: 
             # if video is still left continue creating images 
             name = frames_path + '/frame_' + str(current_frame).zfill(6) + '.jpg'
-            #print ('Creating...' + name) 
+            print ('Creating...' + name) 
     
             # writing the extracted images 
             cv2.imwrite(name, frame) 
@@ -58,6 +58,20 @@ RAW_ANNOTATION_PATH = "/home/oliver/School/SUMMER_2020/airport-apron-object-dete
 ANNOTATIONS_PATH = "/home/oliver/School/SUMMER_2020/airport-apron-object-detection/data/hong_kong/annotations"
 IMG_PATH = "/home/oliver/School/SUMMER_2020/airport-apron-object-detection/data/hong_kong/data"
 
+def map_right_cat(cat):
+    CORRECT_ID = {"0": "10",\
+                   "1": "9", \
+                   "2": "8", \
+                   "3": "7", \
+                   "4": "6", \
+                   "5": "5", \
+                   "6": "4", \
+                   "7": "3", \
+                   "8": "2", \
+                   "9": "1", \
+                   "10": "0",}
+    return CORRECT_ID[cat]
+
 def extract_annotations(json_path, annotation_path):
     # opening JSON file 
     json_file = open(json_path)  
@@ -80,7 +94,11 @@ def extract_annotations(json_path, annotation_path):
         w = d["bbox"][2]/img_w
         h = d["bbox"][3]/img_h
         
-        img_annotation_fname = annotation_path + "/" + img_ids[d["image_id"]][:-3] + "txt"
+        new_id = img_ids[d["image_id"]][:-4].split("_")
+        new_id[1] = int(new_id[1]) + TOTAL_FRAMES + 1
+        new_id = new_id[0] + "_" + str(new_id[1]).zfill(6)
+
+        img_annotation_fname = annotation_path + "/" + new_id + ".txt"
         
         if os.path.exists(img_annotation_fname):
             append_write = 'a' # append if already exists
@@ -88,29 +106,12 @@ def extract_annotations(json_path, annotation_path):
             append_write = 'w' # make a new file if not
             
         img_annotation_file = open(img_annotation_fname, append_write)
-        img_annotation_file.write(str(d["category_id"]-1) + " " + str(x) + " " + str(y) + " " + str(w) + " " + str(h) + "\n") 
+        img_annotation_file.write( map_right_cat(str(d["category_id"]-1)) + " " + str(x) + " " + str(y) + " " + str(w) + " " + str(h) + "\n") 
         img_annotation_file.close() 
         
         print([x,y,w,h])
         print(d["category_id"])
         print(img_ids[d["image_id"]])
-
-def show_boxes(image, boxes):
-    img = image.copy()
-    img_h, img_w, c = img.shape
-    color = (34,139,34)
-    for box in boxes:
-        if(len(box)==2):
-            (label, (x, y, w, h))=box
-        else:
-            (label, (x, y, w, h),_)=box
-
-        cv2.rectangle(img, (x,y), (x+w, y+h), (0,255,0), 5)
-        cv2.putText(img, constants.CLASS_NAMES[str(int(label))], (x, y -5),cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
-    
-    cv2.imshow("img", img)
-    cv2.waitKey(0)
-
 
 def test_annotaion(data_path):
     
@@ -259,10 +260,53 @@ def get_frame_path(frame):
 def get_annotation_path(frame):
     return constants.ANNOTATION_PATH + "/" + frame
 
+def show_boxes(image, boxes):
+    img = image.copy()
+    img_h, img_w, c = img.shape
+    color = (34,139,34)
+    for box in boxes:
+        if(len(box)==2):
+            (label, (x, y, w, h))=box
+        else:
+            (label, (x, y, w, h),_)=box
+
+        cv2.rectangle(img, (x,y), (x+w, y+h), (0,255,0), 5)
+        cv2.putText(img, constants.CLASS_NAMES[str(int(label))], (x, y -5),cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+    
+    cv2.imshow("img", img)
+    cv2.waitKey(0)
+
+def save_augmentation(img, boxes, augmented_path, total_frames):
+    #save the augmented image
+    fname = augmented_path + "/" + "aframe_" + str(total_frames).zfill(6) + ".jpg"
+    cv2.imwrite(fname, img)
+
+    ann_fname = augmented_path + "/" + "aframe_" + str(total_frames).zfill(6) + ".txt"
+    ann_file = open(ann_fname, "w")
+    img_h, img_w, c = img.shape
+
+    for b in boxes:
+        if(len(b)==2):
+            (label, (x, y, w, h)) = b
+        else:
+            (label, (x, y, w, h),_) = b
+        
+        x = float(x)/float(img_w)
+        y = float(y)/float(img_h)
+        w = float(w)/float(img_w)
+        h = float(h)/float(img_h)
+
+        ann_file.write( str(label) + " " + str(x) + " " + str(y) + " " + str(w) + " " + str(h) + "\n") 
+    
+    ann_file.close() 
+
+
+
+
 def augment_data(train_data_text_file, raw_path, augmented_path, last_frame):
     #1. copy the images from training dataset
     #copy_for_augment(train_data_text_file, raw_path, augmented_path, last_frame)
-    
+
     #2. initliaze augmentor
     augmentor, transformer = init_augment(augmented_path)
 
@@ -284,43 +328,68 @@ def augment_data(train_data_text_file, raw_path, augmented_path, last_frame):
     hue = createTechnique("raise_hue", {"power" : 0.9})
     augmentor.addTransformer(transformer(hue))
 
+    total_frames = TOTAL_FRAMES
     frames = []
     for fname in os.listdir(augmented_path):
-        frames.append(fname)
+        if fname.endswith(".jpg"):
+            frames.append(fname)
 
-    for fr in frames:
-        img, boxes = load_boxes(get_frame_path(fr), get_annotation_path(fr[:-3] + "txt"))
+    for fr in frames:   
+        img, boxes = load_boxes(augmented_path + "/" + fr,augmented_path + "/" + fr[:-3] + "txt")
         
         ver_img, ver_boxes = aug_operation(vFlip, transformer, img, boxes)
+        save_augmentation(ver_img, ver_boxes, augmented_path, total_frames)
+        total_frames += 1
+
         hor_img, hor_boxes = aug_operation(hFlip, transformer, img, boxes)
-        blur_img, blur_boxes = aug_operation(avgBlur, transformer, img, boxes)
-        hv_img, hv_boxes = aug_operation(hvFlip, transformer, img, boxes)
-        hue_img, hue_boxes = aug_operation(hue, transformer, img, boxes)
-
-        show_boxes(img, boxes)
-        show_boxes(ver_img, ver_boxes)
-        show_boxes(hor_img, hor_boxes)
-        show_boxes(blur_img, blur_boxes)
-        show_boxes(hv_img, hv_boxes)
-        show_boxes(hue_img, hue_boxes)
+        save_augmentation(hor_img, hor_boxes, augmented_path, total_frames)
+        total_frames += 1
         
-        return
+        blur_img, blur_boxes = aug_operation(avgBlur, transformer, img, boxes)
+        save_augmentation(blur_img, blur_boxes, augmented_path, total_frames)
+        total_frames += 1
+        
+        hv_img, hv_boxes = aug_operation(hvFlip, transformer, img, boxes)
+        save_augmentation(hv_img, hv_boxes, augmented_path, total_frames)
+        total_frames += 1
+        
+        hue_img, hue_boxes = aug_operation(hue, transformer, img, boxes)
+        save_augmentation(hue_img, hue_boxes, augmented_path, total_frames)
+        total_frames += 1
 
 
 
 
+#extract_frames("/home/oliver/School/THESIS/data/japan/Data/japan_letiste/raw_mp4/japan.mp4", \
+#               "/home/oliver/School/THESIS/data/japan_used/frames" )
 
 
+#extract_annotations("/home/oliver/School/THESIS/data/japan_used/instances_default.json", \
+#                    "/home/oliver/School/THESIS/data/japan_used/annotations")
+
+#test_annotaion("/home/oliver/School/THESIS/data/dataset")
+
+#test_annotaion("/home/oliver/School/THESIS/data/japan_used")
+test_mathcing_files("/home/oliver/School/THESIS/data/dataset/annotations", \
+                    "/home/oliver/School/THESIS/data/dataset/frames")
+
+#test_annotaion("/home/oliver/School/THESIS/letisni-stojanka/augmented_frames")
+#test_mathcing_files("/home/oliver/School/THESIS/data/dataset/annotations", \
+#                    "/home/oliver/School/THESIS/data/dataset/frames")
 
 #extract_annotations(constants.JSON_PATH, constants.ANNOTATION_PATH)
 #test_annotaion(constants.DATA_PATH)
 #test_mathcing_files(constants.ANNOTATION_PATH, constants.FRAMES_PATH)
 
 #augment_data("/home/oliver/School/THESIS/letisni-stojanka/model/train.txt", constants.FRAMES_PATH, \
-#              "/home/oliver/School/THESIS/letisni-stojanka/augmented_frames", 50423)
+#             "/home/oliver/School/THESIS/letisni-stojanka/augmented_frames", TOTAL_FRAMES)
 
-augment_data("/home/oliver/School/THESIS/letisni-stojanka/model/train.txt", constants.FRAMES_PATH, \
-              "/home/oliver/School/THESIS/data/hong_kong/test_frames", 50423)
+#test_annotaion("/home/oliver/School/THESIS/letisni-stojanka/augmented_frames")
+
+#test_mathcing_files("/home/oliver/School/THESIS/letisni-stojanka/augmented_frames/annotations", \
+#                    "/home/oliver/School/THESIS/letisni-stojanka/augmented_frames/frames")
+#augment_data("/home/oliver/School/THESIS/letisni-stojanka/model/train.txt", constants.FRAMES_PATH, \
+#              "/home/oliver/School/THESIS/data/hong_kong/test_frames", 50423)
 
 #show_boxes("/home/oliver/School/THESIS/data/hong_kong/frames/frame_000000.jpg", \
 #           "/home/oliver/School/THESIS/data/hong_kong/annotations/frame_000000.txt")
