@@ -4,7 +4,7 @@ from PIL import Image
 import math
 import os
 import random
-
+import time
 
 import constants
 
@@ -12,12 +12,17 @@ IMG_W = 1278
 IMG_H = 720
 
 CONFIG_PATH = "model/yolo-obj.cfg"
-WEIGHTS_PATH = "model/yolo-obj_best.weights"
+WEIGHTS_PATH = "model/yolo-obj_last.weights"
 LABELS_PATH = "model/obj.names"
 TEST_FRAMES = "/home/oliver/School/THESIS/data/hong_kong/test_frames"
 TRAINING_DATA_PATH = "model/train.txt"
 TEST_DATA_PATH = "model/test.txt"
 
+#TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/test_videos/hong_kong_train.mp4"
+TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/test_videos/japan_test_3.mp4"
+#TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/test_videos/hong_kong_train.mp4"
+#TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/test_videos/japan_test_3.mp4"
+OUTPUT_TEST_VIDEO = "/home/oliver/School/THESIS/data/test_videos/japan_test3_output.mp4"
 
 def get_label(class_id):
     return constants.CLASS_NAMES[str(class_id)]
@@ -62,9 +67,14 @@ class Detection:
          return "label - {} | confidence - {} | bbox - {}\n".format(self.label, str(round(self.confidence, 2)), self.bbox.get_text_format())
 
 class Inference:
-    def __init__(self, img_path):
-        self.img_path = img_path
-        self.img = np.asarray(Image.open(img_path))
+    def __init__(self, img, style):
+        if style == "path":
+            self.img_path = img
+            self.img = np.asarray(Image.open(self.img_path))
+        else:
+            self.img_path = ""
+            self.img = np.asarray(img)
+
         self.img_h = self.img.shape[0]
         self.img_w = self.img.shape[1]
         self.detections = []
@@ -79,7 +89,7 @@ class Inference:
         return s
 
 
-    def show(self, ia=None):
+    def show(self, show, ia=None):
         for d in self.detections:
             color = (34,139,34)
             first, sec = d.bbox.get_cv2_format()
@@ -99,9 +109,11 @@ class Inference:
                 y2 = y + int(float(gt.bbox.h) * IMG_H)
 
                 cv2.rectangle(self.img, (x,y), (x2,y2), color, 2)
-
-        cv2.imshow('image',self.img)
-        cv2.waitKey(0)
+        
+        if show == True:
+            cv2.imshow('image',self.img)
+            cv2.waitKey(0)
+        
 
     def perform_nms(self):
         boxes = []
@@ -130,8 +142,8 @@ class Model:
 
     #takes image path as a param and performs object inference on it
     #returns bbox 
-    def inference_img(self, img_path):
-        In = Inference(img_path)
+    def inference_img(self, img_path, style):
+        In = Inference(img_path, style)
 
         blob = cv2.dnn.blobFromImage(In.img, 1 / 255.0, (416, 416), swapRB=True, crop=False)
         self.net.setInput(blob)
@@ -203,11 +215,39 @@ class Evaluator:
             self.gt[img_fname] = Ia
 
     def demo(self):
-        fnames = random.sample(self.data_fnames, 3)
+        fnames = random.sample(self.data_fnames, 10)
         for fname in fnames:
-            In = self.model.inference_img(fname)
-            In.show(self.gt[fname])
+            In = self.model.inference_img(fname, "path")
+            In.show(True, self.gt[fname])
 
+
+    def video_demo(self):
+        v_stream = cv2.VideoCapture(TEST_VIDEO_PATH)
+        writer = None
+
+        c = 0
+        while True:
+            if c == 1000:
+                break
+            (grabbed, frame) = v_stream.read()
+
+            if not grabbed:
+                break
+
+            if writer is None:
+                fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+                writer = cv2.VideoWriter(OUTPUT_TEST_VIDEO, fourcc, 30, (frame.shape[1], frame.shape[0]), True)
+            
+            #start = time.time()
+            In = self.model.inference_img(frame, "frame")
+            #end = time.time()
+            In.show(False)
+            writer.write(In.img)
+            #elap = (end - start)
+            #print("{:.4f}".format(elap))
+            c+=1
+        writer.release()
+        v_stream.release()
 
 
     def compute_iou(self, bboxA, bboxB):
@@ -232,7 +272,7 @@ if __name__ == "__main__":
     #new_fnames = transform_paths(TRAINING_DATA_PATH, constants.FRAMES_PATH)
     new_fnames = transform_paths(TEST_DATA_PATH, constants.FRAMES_PATH)
     ev = Evaluator(m, new_fnames)
-    ev.demo()
-    
+    #ev.demo()
+    ev.video_demo()
     #m.inference_img(TEST_FRAMES + "/" + "frame_029256.jpg")
     

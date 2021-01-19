@@ -278,9 +278,11 @@ def show_boxes(image, boxes):
 
 def save_augmentation(img, boxes, augmented_path, total_frames):
     #save the augmented image
-    fname = augmented_path + "/" + "aframe_" + str(total_frames).zfill(6) + ".jpg"
+    #fname = augmented_path + "/" + "aframe_" + str(total_frames).zfill(6) + ".jpg"
+    
+    fname = "/home/oliver/School/THESIS/data/thesis_footage" + "/" + "aframe_" + str(total_frames).zfill(6) + ".jpg"
     cv2.imwrite(fname, img)
-
+    return
     ann_fname = augmented_path + "/" + "aframe_" + str(total_frames).zfill(6) + ".txt"
     ann_file = open(ann_fname, "w")
     img_h, img_w, c = img.shape
