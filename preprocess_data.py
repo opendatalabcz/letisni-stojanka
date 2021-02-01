@@ -363,8 +363,8 @@ def augment_data(train_data_text_file, raw_path, augmented_path, last_frame):
 
 
 
-extract_frames("/home/oliver/School/THESIS/data/dataset/japan_2_batch/chosen.mp4", \
-               "/home/oliver/School/THESIS/data/dataset/japan_2_batch/dataset/frames")
+extract_frames("/home/blaskoli/chosen.mp4", \
+               "/home/home/blaskoli/dataset/japan_batch_2/frames")
 
 
 #extract_annotations("/home/oliver/School/THESIS/data/dataset/japan_2_batch/json/annotations/instances_default.json", \
