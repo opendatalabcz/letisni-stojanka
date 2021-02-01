@@ -21,26 +21,28 @@ TOTAL_FRAMES = 104422
 DATA_PATH = "/home/oliver/School/SUMMER_2020/airport-apron-object-detection/data/hong_kong"
 
 def extract_frames(video_path, frames_path):
-    cam = cv2.VideoCapture(video_path)   
-    # frame 
+    """Extracts frames(images) from the video source."""
+    
+    cam = cv2.VideoCapture(video_path)
     current_frame = TOTAL_FRAMES
-    current_frame += 1
-
-    while(True): 
-        # reading from frame 
+    
+    while(True):
+        #reading from video 
         ret,frame = cam.read() 
     
         if ret: 
-            # if video is still left continue creating images 
+            #if video is still left continue creating images 
             name = frames_path + '/frame_' + str(current_frame).zfill(6) + '.jpg'
             print ('Creating...' + name) 
     
-            # writing the extracted images 
+            #writing the extracted images 
             cv2.imwrite(name, frame) 
     
-            # increasing counter so that it will 
-            # show how many frames are created 
             current_frame += 1
+            #stopping before frames that don't have annotations yet
+            if current_frame == TOTAL_FRAMES + 162000:
+                print("Total number of frames: {}".format(current_frame))
+                break
         else: 
             break
     
@@ -49,14 +51,10 @@ def extract_frames(video_path, frames_path):
     cv2.destroyAllWindows() 
 
 def get_img_size(img_path):
-    # img_path = './sample_video/data/frame_000125.jpg'
+    """Returns height and width of image."""
     im = cv2.imread(img_path)
     h, w, c = im.shape
     return h, w
-
-RAW_ANNOTATION_PATH = "/home/oliver/School/SUMMER_2020/airport-apron-object-detection/data/hong_kong/raw_annotations"
-ANNOTATIONS_PATH = "/home/oliver/School/SUMMER_2020/airport-apron-object-detection/data/hong_kong/annotations"
-IMG_PATH = "/home/oliver/School/SUMMER_2020/airport-apron-object-detection/data/hong_kong/data"
 
 def map_right_cat(cat):
     CORRECT_ID = {"0": "10",\
@@ -73,7 +71,7 @@ def map_right_cat(cat):
     return CORRECT_ID[cat]
 
 def extract_annotations(json_path, annotation_path):
-    # opening JSON file 
+    """Extracts annotations from a json file produced by CVAT tool into COCO format."""
     json_file = open(json_path)  
     
     # returns JSON object as a dictionary 
@@ -87,6 +85,7 @@ def extract_annotations(json_path, annotation_path):
         #print(d["id"], d["file_name"]) 
 
     img_h, img_w = get_img_size(constants.EXAMPLE_IMG)
+    
     #iterate over all bounding boxes
     for d in anotation_data['annotations']:
         x = d["bbox"][0]/img_w
@@ -95,7 +94,9 @@ def extract_annotations(json_path, annotation_path):
         h = d["bbox"][3]/img_h
         
         new_id = img_ids[d["image_id"]][:-4].split("_")
-        new_id[1] = int(new_id[1]) + TOTAL_FRAMES + 1
+        new_id[1] = int(new_id[1]) + TOTAL_FRAMES
+        if new_id[1] == 197718:
+            break
         new_id = new_id[0] + "_" + str(new_id[1]).zfill(6)
 
         img_annotation_fname = annotation_path + "/" + new_id + ".txt"
@@ -362,18 +363,18 @@ def augment_data(train_data_text_file, raw_path, augmented_path, last_frame):
 
 
 
-#extract_frames("/home/oliver/School/THESIS/data/japan/Data/japan_letiste/raw_mp4/japan.mp4", \
-#               "/home/oliver/School/THESIS/data/japan_used/frames" )
+extract_frames("/home/oliver/School/THESIS/data/dataset/japan_2_batch/chosen.mp4", \
+               "/home/oliver/School/THESIS/data/dataset/japan_2_batch/dataset/frames")
 
 
-#extract_annotations("/home/oliver/School/THESIS/data/japan_used/instances_default.json", \
-#                    "/home/oliver/School/THESIS/data/japan_used/annotations")
+#extract_annotations("/home/oliver/School/THESIS/data/dataset/japan_2_batch/json/annotations/instances_default.json", \
+#                    "/home/oliver/School/THESIS/data/dataset/japan_2_batch/dataset/annotations")
 
-#test_annotaion("/home/oliver/School/THESIS/data/dataset")
+#test_annotaion("/home/oliver/School/THESIS/data/dataset/japan_2_batch/dataset")
 
 #test_annotaion("/home/oliver/School/THESIS/data/japan_used")
-test_mathcing_files("/home/oliver/School/THESIS/data/dataset/annotations", \
-                    "/home/oliver/School/THESIS/data/dataset/frames")
+#test_mathcing_files("/home/oliver/School/THESIS/data/dataset/annotations", \
+                    #"/home/oliver/School/THESIS/data/dataset/frames")
 
 #test_annotaion("/home/oliver/School/THESIS/letisni-stojanka/augmented_frames")
 #test_mathcing_files("/home/oliver/School/THESIS/data/dataset/annotations", \

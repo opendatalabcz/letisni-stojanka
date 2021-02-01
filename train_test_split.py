@@ -5,7 +5,7 @@ import math
 FRAMES_PATH = "/home/oliver/School/THESIS/data/dataset/frames"
 OUT_PATH = "/home/blaskoli/dataset/frames"
 
-TOTAL_FRAMES = 104422
+TOTAL_FRAMES = 266422
 
 VALID_START = 92421
 VALID_STOP = 104421
@@ -73,5 +73,5 @@ def add_augmented(frames_path, out_path):
     for af in aug_fnames:
         train_file.write(af + "\n")
 
-#train_test_split(FRAMES_PATH, TRAIN_FRAME_RATE, VALID_FRAME_RATE, OUT_PATH)
-add_augmented(FRAMES_PATH, OUT_PATH)
+train_test_split(FRAMES_PATH, TRAIN_FRAME_RATE, VALID_FRAME_RATE, OUT_PATH)
+#add_augmented(FRAMES_PATH, OUT_PATH)
