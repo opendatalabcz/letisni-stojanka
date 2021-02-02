@@ -12,7 +12,7 @@ CLASS_NAMES = {"0": "airplane",\
 
 VIDEO_PATH = "/home/oliver/School/THESIS/data/hong_kong/hong_kong.mp4"
 JSON_PATH = "/home/oliver/School/THESIS/data/hong_kong/instances_default.json"
-EXAMPLE_IMG = "/home/oliver/School/THESIS/data/dataset/frames/frame_000125.jpg"
+EXAMPLE_IMG = "/home/oliver/School/THESIS/data/dataset/frames/frame_157040.jpg"
 ANNOTATION_PATH = "/home/oliver/School/THESIS/data/dataset/annotations"
 FRAMES_PATH = "/home/oliver/School/THESIS/data/dataset/frames"
 

@@ -5,29 +5,34 @@ import math
 import os
 import random
 import time
-
+from threading import Thread
 import constants
+from queue import Queue
 
 IMG_W = 1278
 IMG_H = 720
 
-CONFIG_PATH = "model/yolo-obj.cfg"
-WEIGHTS_PATH = "model/yolo-obj_last.weights"
-LABELS_PATH = "model/obj.names"
+CONFIG_PATH = "../model/yolo-obj.cfg"
+WEIGHTS_PATH = "../model/yolo-obj_last.weights"
+LABELS_PATH = "../model/obj.names"
 TEST_FRAMES = "/home/oliver/School/THESIS/data/hong_kong/test_frames"
-TRAINING_DATA_PATH = "model/train.txt"
-TEST_DATA_PATH = "model/test.txt"
+TRAINING_DATA_PATH = "../model/train.txt"
+TEST_DATA_PATH = "../model/test.txt"
 
 #TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/test_videos/hong_kong_train.mp4"
-TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/test_videos/japan_test_3.mp4"
+#TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/japan/Data/japan_letiste/raw_mp4/japan_test.mp4"
+TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/japan_2_batch/chosen_test.mp4"
+#TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/japan_2_batch/chosen_test2.mp4"
 #TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/test_videos/hong_kong_train.mp4"
 #TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/test_videos/japan_test_3.mp4"
 OUTPUT_TEST_VIDEO = "/home/oliver/School/THESIS/data/test_videos/japan_test3_output.mp4"
 
 def get_label(class_id):
+    """"Returns the name of the class corresponding to the class_id."""
     return constants.CLASS_NAMES[str(class_id)]
 
 def transform_paths(old_paths_fname, new_path):
+    """Helper function that transofrms paths of images if needed"""
     new_fnames = []
 
     file = open(old_paths_fname, 'r') 
@@ -40,6 +45,7 @@ def transform_paths(old_paths_fname, new_path):
 
 
 class Bbox:
+    """Represents bbox - rectangle that is drawn around detected objects"""
     def __init__(self, box):
         self.x = box[0]
         self.y = box[1]
@@ -57,6 +63,7 @@ class Bbox:
 
 
 class Detection:
+    """Represents detected objects in the image"""
     def __init__(self, bbox, confidence, class_id):
         self.bbox = bbox
         self.confidence = confidence
@@ -67,6 +74,7 @@ class Detection:
          return "label - {} | confidence - {} | bbox - {}\n".format(self.label, str(round(self.confidence, 2)), self.bbox.get_text_format())
 
 class Inference:
+    """Represents inference of the model. Contains all detection inferenced by model."""
     def __init__(self, img, style):
         if style == "path":
             self.img_path = img
@@ -90,13 +98,14 @@ class Inference:
 
 
     def show(self, show, ia=None):
+        """Draws inferenced objects into the image, if show == True, also displays it"""
         for d in self.detections:
             color = (34,139,34)
             first, sec = d.bbox.get_cv2_format()
             cv2.rectangle(self.img, first, sec, color, 2)
             text = "{}".format(d.label)
             cv2.putText(self.img, text, (d.bbox.x, d.bbox.y -5),                  
-            cv2.FONT_HERSHEY_SIMPLEX,0.5, color, 2)
+            cv2.FONT_HERSHEY_SIMPLEX,0.5, color, 1)
 
         if ia != None:
             for gt in ia.gts:
@@ -116,12 +125,13 @@ class Inference:
         
 
     def perform_nms(self):
+        """Performs non-maximum suppression on the image"""
         boxes = []
         confidences = []
         for d in self.detections:
             boxes.append(d.bbox.unwrap())
             confidences.append(float(d.confidence))
-        idxs = cv2.dnn.NMSBoxes(boxes, confidences, 0.5, 0.3)
+        idxs = cv2.dnn.NMSBoxes(boxes, confidences, 0.2, 0.3)
 
         new_detections = []
         if len(idxs) > 0:
@@ -130,10 +140,8 @@ class Inference:
         
         self.detections = new_detections
 
-
-
-
 class Model:
+    """Represents trained model for detecting objects, handles image inference"""
     def __init__(self, config_path, weights_path, labels_path):
         self.net = cv2.dnn.readNetFromDarknet(config_path, weights_path)
         self.ln = self.net.getLayerNames()
@@ -166,6 +174,7 @@ class Model:
         #print(In.get_text_format())
 
 class GroundingTruth:
+    """Represents objects present of the image"""
     def __init__(self, class_id, bbox):
         self.class_id = class_id
         self.label = get_label(self.class_id)
@@ -175,6 +184,7 @@ class GroundingTruth:
         return "label - {} | bbox - {}\n".format(self.label, self.bbox.get_text_format())
 
 class ImageAnnotation:
+    """Represents annotation of the image"""
     def __init__(self, img_path):
         self.img_path = img_path
         self.gts = []
@@ -183,13 +193,15 @@ class ImageAnnotation:
         self.gts.append(gt)
 
 class Evaluator:
+    """Class for model evaluation"""
     def __init__(self, model, fnames):
         self.model = model
         self.data_fnames = fnames
         self.get_gt_fnames()
-        self.load_grounding_trurths()
+        #self.load_grounding_trurths()
     
     def get_gt_fnames(self):
+        """Loads ground truths filenames"""
         self.gt_fnames = []
         for f in self.data_fnames:
             splits = f.split("/")
@@ -197,6 +209,7 @@ class Evaluator:
             self.gt_fnames.append(new_fname)
 
     def load_grounding_trurths(self):
+        """Loads ground truths from annotation files."""
         self.gt = {}
         for fname in self.gt_fnames:
             img_fname_splits = fname.split("/")
@@ -215,42 +228,16 @@ class Evaluator:
             self.gt[img_fname] = Ia
 
     def demo(self):
+        """Tests inference of the model, compared to grounding truth"""
         fnames = random.sample(self.data_fnames, 10)
         for fname in fnames:
             In = self.model.inference_img(fname, "path")
             In.show(True, self.gt[fname])
-
-
-    def video_demo(self):
-        v_stream = cv2.VideoCapture(TEST_VIDEO_PATH)
-        writer = None
-
-        c = 0
-        while True:
-            if c == 1000:
-                break
-            (grabbed, frame) = v_stream.read()
-
-            if not grabbed:
-                break
-
-            if writer is None:
-                fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-                writer = cv2.VideoWriter(OUTPUT_TEST_VIDEO, fourcc, 30, (frame.shape[1], frame.shape[0]), True)
-            
-            #start = time.time()
-            In = self.model.inference_img(frame, "frame")
-            #end = time.time()
-            In.show(False)
-            writer.write(In.img)
-            #elap = (end - start)
-            #print("{:.4f}".format(elap))
-            c+=1
-        writer.release()
-        v_stream.release()
+        
 
 
     def compute_iou(self, bboxA, bboxB):
+        """Computer IOU between two bboxes"""
         xA = max(bboxA.x, bboxB.x)
         yA = max(bboxA.y, bboxB.y)
         xB = min(bboxA.w, bboxB.w)
@@ -265,14 +252,4 @@ class Evaluator:
 
         return iou
 
-
-if __name__ == "__main__":
-    m = Model(CONFIG_PATH, WEIGHTS_PATH, LABELS_PATH)
-
-    #new_fnames = transform_paths(TRAINING_DATA_PATH, constants.FRAMES_PATH)
-    new_fnames = transform_paths(TEST_DATA_PATH, constants.FRAMES_PATH)
-    ev = Evaluator(m, new_fnames)
-    #ev.demo()
-    ev.video_demo()
-    #m.inference_img(TEST_FRAMES + "/" + "frame_029256.jpg")
     

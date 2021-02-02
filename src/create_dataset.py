@@ -57,7 +57,8 @@ def get_img_size(img_path):
     return h, w
 
 def map_right_cat(cat):
-    CORRECT_ID = {"0": "10",\
+    """Corrects ids of the classes"""
+    CORRECT_ID =  {"0": "10",\
                    "1": "9", \
                    "2": "8", \
                    "3": "7", \
@@ -82,7 +83,6 @@ def extract_annotations(json_path, annotation_path):
     # mapping image_id to corresponding filename
     for d in anotation_data['images']: 
         img_ids[d["id"]] = d["file_name"][:-3] + "jpg"
-        #print(d["id"], d["file_name"]) 
 
     img_h, img_w = get_img_size(constants.EXAMPLE_IMG)
     
@@ -95,8 +95,10 @@ def extract_annotations(json_path, annotation_path):
         
         new_id = img_ids[d["image_id"]][:-4].split("_")
         new_id[1] = int(new_id[1]) + TOTAL_FRAMES
-        if new_id[1] == 197718:
+        
+        if new_id[1] == TOTAL_FRAMES + 142676:
             break
+        
         new_id = new_id[0] + "_" + str(new_id[1]).zfill(6)
 
         img_annotation_fname = annotation_path + "/" + new_id + ".txt"
@@ -115,7 +117,7 @@ def extract_annotations(json_path, annotation_path):
         print(img_ids[d["image_id"]])
 
 def test_annotaion(data_path):
-    
+    """Tests if annotation matches the frames"""
     #create testing folder
     os.popen("mkdir ./test_dir")
     annotation_path = data_path + "/annotations"
@@ -178,6 +180,7 @@ def zip_data():
     command = os.popen('zip {}/my_data.zip {}'.format(DATA_PATH, all_fnames))
 
 def test_mathcing_files(annotation_path, frames_path):
+    """Tests if all frames have corresponding annotation"""
     annotations = []
     frames = []
 
@@ -194,6 +197,7 @@ def test_mathcing_files(annotation_path, frames_path):
         if annotations[i][:-3] != frames[i][:-3]:
             print(annotations[i], frames[i])
             break
+        
 def get_frame_names(data_text_format_file):
     file = open(data_text_format_file, 'r') 
     lines = file.readlines()
@@ -363,14 +367,14 @@ def augment_data(train_data_text_file, raw_path, augmented_path, last_frame):
 
 
 
-extract_frames("/home/blaskoli/chosen.mp4", \
-               "/home/home/blaskoli/dataset/japan_batch_2/frames")
+#extract_frames("/home/oliver/School/THESIS/data/dataset/japan_2_batch/chosen.mp4", \
+#               "/home/oliver/School/THESIS/data/dataset/frames")
 
 
 #extract_annotations("/home/oliver/School/THESIS/data/dataset/japan_2_batch/json/annotations/instances_default.json", \
-#                    "/home/oliver/School/THESIS/data/dataset/japan_2_batch/dataset/annotations")
+#                    "/home/oliver/School/THESIS/data/dataset/annotations")
 
-#test_annotaion("/home/oliver/School/THESIS/data/dataset/japan_2_batch/dataset")
+test_annotaion("/home/oliver/School/THESIS/data/dataset")
 
 #test_annotaion("/home/oliver/School/THESIS/data/japan_used")
 #test_mathcing_files("/home/oliver/School/THESIS/data/dataset/annotations", \

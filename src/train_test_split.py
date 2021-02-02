@@ -17,11 +17,13 @@ TRAIN_FRAME_RATE = 30
 VALID_FRAME_RATE = 2
 
 def transfer_path(old_path, new_path):
+    """Changes paths to files from local machine to computing cluster"""
     splits = old_path.split("/")
     fname = splits[-1]
     return new_path + "/" + fname
 
 def train_test_split(frames_path, train_frame_rate, valid_frame_rate, out_path):
+    """Splits frames and annotations into three files: train, test and valid and handles filtering."""
     train_fnames = []
     valid_fnames = []
     test_fnames = []
@@ -63,8 +65,10 @@ def train_test_split(frames_path, train_frame_rate, valid_frame_rate, out_path):
 
 
 def add_augmented(frames_path, out_path):
+    """Adds augmented images to the training file"""
     aug_fnames = []
     for fname in os.listdir(frames_path):
+        #augmented images have prefix a"
         if fname.startswith("a"):
             new_fname = transfer_path(fname, out_path)
             aug_fnames.append(new_fname)
