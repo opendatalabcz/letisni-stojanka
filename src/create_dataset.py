@@ -1,31 +1,24 @@
-import tensorflow as tf
 import json
 import numpy as np
-import IPython.display as display
 import cv2 
 import os 
 import random
 import math
 import time 
-from matplotlib import pyplot as plt
 from clodsa.augmentors.augmentorFactory import createAugmentor
 from clodsa.transformers.transformerFactory import transformerGenerator
 from clodsa.techniques.techniqueFactory import createTechnique
-import xml.etree.ElementTree as ET 
 
 import constants
 
-FRAMES_PATH = './data'
-FRAMES_CUT = 17500
-TOTAL_FRAMES = 104422
-DATA_PATH = "/home/oliver/School/SUMMER_2020/airport-apron-object-detection/data/hong_kong"
+TOTAL_FRAMES = 320427
 
 def extract_frames(video_path, frames_path):
     """Extracts frames(images) from the video source."""
     
     cam = cv2.VideoCapture(video_path)
     current_frame = TOTAL_FRAMES
-    
+    c = 0
     while(True):
         #reading from video 
         ret,frame = cam.read() 
@@ -33,17 +26,18 @@ def extract_frames(video_path, frames_path):
         if ret: 
             #if video is still left continue creating images 
             name = frames_path + '/frame_' + str(current_frame).zfill(6) + '.jpg'
-            print ('Creating...' + name) 
+            #print ('Creating...' + name) 
     
-            #writing the extracted images 
-            cv2.imwrite(name, frame) 
+            if c >= TOTAL_FRAMES - 104422:
+                 #writing the extracted images 
+                 cv2.imwrite(name, frame) 
+                 current_frame += 1
+
+            #print("frame_{}".format(c))
+            c += 1
     
-            current_frame += 1
-            #stopping before frames that don't have annotations yet
-            if current_frame == TOTAL_FRAMES + 162000:
-                print("Total number of frames: {}".format(current_frame))
-                break
-        else: 
+        else:
+            print("Newly added frames: {}".format(current_frame - TOTAL_FRAMES)) 
             break
     
     # Release all space and windows once done 
@@ -71,7 +65,18 @@ def map_right_cat(cat):
                    "10": "0",}
     return CORRECT_ID[cat]
 
-def extract_annotations(json_path, annotation_path):
+def coco_to_yolo(x, y, w, h , img_w, img_h):
+    x_center = x + int(w/2)
+    y_center = y + int(h/2)
+        
+    norm_x = x_center/img_w
+    norm_y = y_center/img_h
+    norm_width = w / img_w
+    norm_height = h / img_h
+    
+    return norm_x, norm_y, norm_width, norm_height
+
+def extract_annotations(json_path, annotation_path, dataset):
     """Extracts annotations from a json file produced by CVAT tool into COCO format."""
     json_file = open(json_path)  
     
@@ -85,19 +90,12 @@ def extract_annotations(json_path, annotation_path):
         img_ids[d["id"]] = d["file_name"][:-3] + "jpg"
 
     img_h, img_w = get_img_size(constants.EXAMPLE_IMG)
-    
     #iterate over all bounding boxes
     for d in anotation_data['annotations']:
-        x = d["bbox"][0]/img_w
-        y = d["bbox"][1]/img_h
-        w = d["bbox"][2]/img_w
-        h = d["bbox"][3]/img_h
+        x, y, w, h = coco_to_yolo(d["bbox"][0], d["bbox"][1], d["bbox"][2], d["bbox"][3], img_w, img_h)
         
         new_id = img_ids[d["image_id"]][:-4].split("_")
         new_id[1] = int(new_id[1]) + TOTAL_FRAMES
-        
-        if new_id[1] == TOTAL_FRAMES + 142676:
-            break
         
         new_id = new_id[0] + "_" + str(new_id[1]).zfill(6)
 
@@ -107,14 +105,37 @@ def extract_annotations(json_path, annotation_path):
             append_write = 'a' # append if already exists
         else:
             append_write = 'w' # make a new file if not
-            
-        img_annotation_file = open(img_annotation_fname, append_write)
-        img_annotation_file.write( map_right_cat(str(d["category_id"]-1)) + " " + str(x) + " " + str(y) + " " + str(w) + " " + str(h) + "\n") 
-        img_annotation_file.close() 
         
-        print([x,y,w,h])
-        print(d["category_id"])
-        print(img_ids[d["image_id"]])
+        #dataset japan have inverted class_ids compared to dataset hong-kong
+        if dataset == "japan":
+            cat = map_right_cat(str(d["category_id"]-1))
+        else:
+            cat = str(d["category_id"]-1)
+
+        #skipping category person
+        if cat != "10":
+            img_annotation_file = open(img_annotation_fname, append_write)
+            img_annotation_file.write( cat + " " + str(x) + " " + str(y) + " " + str(w) + " " + str(h) + "\n") 
+            img_annotation_file.close()
+            print("person deleted") 
+            
+
+def yolo_to_cv(x, y, w, h, img_w, img_h):
+    l = int((x - w / 2) * img_w)
+    r = int((x + w / 2) * img_w)
+    t = int((y - h / 2) * img_h)
+    b = int((y + h / 2) * img_h)
+    
+    if l < 0:
+        l = 0
+    if r > img_w - 1:
+        r = img_w - 1
+    if t < 0:
+        t = 0
+    if b > img_h - 1:
+        b = img_h - 1
+
+    return l, r, t, b
 
 def test_annotaion(data_path):
     """Tests if annotation matches the frames"""
@@ -128,7 +149,6 @@ def test_annotaion(data_path):
         fnames.append(fname)
     
     for i in range(10):
-
         fname = random.choice(fnames)
         old_fname = frames_path + "/" + fname[:-3] + "jpg" 
         os.popen('cp {} ./test_dir/'.format(old_fname))
@@ -146,14 +166,10 @@ def test_annotaion(data_path):
             bbox = [splits[1], splits[2], splits[3], splits[4]]
             print("Class id - {}, bbox[{},{},{},{}]".format(class_id, bbox[0], bbox[1], bbox[2], bbox[3]))
 
-            x = int(float(bbox[0]) * img_w)
-            y = int(float(bbox[1]) * img_h)
+            l, r, t, b = yolo_to_cv(float(bbox[0]), float(bbox[1]), float(bbox[2]), float(bbox[3]), img_w, img_h)
 
-            x2 = x + int(float(bbox[2]) * img_w)
-            y2 = y + int(float(bbox[3]) * img_h)
-
-            img = cv2.rectangle(img, (x,y), (x2,y2), (0,0,255), 2)
-            img = cv2.putText(img, constants.CLASS_NAMES[str(int(class_id))], (x+1,y+1), cv2.FONT_HERSHEY_SIMPLEX, 0.7, 255)
+            img = cv2.rectangle(img, (l,t), (r,b), (0,0,255), 2)
+            img = cv2.putText(img, constants.CLASS_NAMES[str(int(class_id))], (l+1,t+1), cv2.FONT_HERSHEY_SIMPLEX, 0.7, 255)
         
         #cv2.imwrite(old_fname, img) 
         cv2.imshow('image',img)
@@ -252,8 +268,8 @@ def load_boxes(img_path, annotation_path):
         for line in lines:
             splits = line.split(" ")
             label = splits[0]
-            x  = int(float(splits[1])*img_w) 
-            y = int(float(splits[2])*img_h)
+            x  = int(float(splits[1])*img_w - float(splits[3])*img_w/2)
+            y = int(float(splits[2])*img_h - float(splits[4])*img_h/2)
             h = int(float(splits[4])*img_h)
             w = int(float(splits[3])*img_w)
             boxes.append((label, (x, y, w, h)))
@@ -279,15 +295,12 @@ def show_boxes(image, boxes):
         cv2.putText(img, constants.CLASS_NAMES[str(int(label))], (x, y -5),cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
     
     cv2.imshow("img", img)
-    cv2.waitKey(0)
+    cv2.waitKey(0)                                                                                                                                                              
 
 def save_augmentation(img, boxes, augmented_path, total_frames):
-    #save the augmented image
-    #fname = augmented_path + "/" + "aframe_" + str(total_frames).zfill(6) + ".jpg"
+    img_fname = augmented_path + "/" + "aframe_" + str(total_frames).zfill(6) + ".jpg"
+    cv2.imwrite(img_fname, img)
     
-    fname = "/home/oliver/School/THESIS/data/thesis_footage" + "/" + "aframe_" + str(total_frames).zfill(6) + ".jpg"
-    cv2.imwrite(fname, img)
-    return
     ann_fname = augmented_path + "/" + "aframe_" + str(total_frames).zfill(6) + ".txt"
     ann_file = open(ann_fname, "w")
     img_h, img_w, c = img.shape
@@ -297,12 +310,10 @@ def save_augmentation(img, boxes, augmented_path, total_frames):
             (label, (x, y, w, h)) = b
         else:
             (label, (x, y, w, h),_) = b
-        
-        x = float(x)/float(img_w)
-        y = float(y)/float(img_h)
-        w = float(w)/float(img_w)
-        h = float(h)/float(img_h)
-
+        x = float(x)/img_w
+        y = float(y)/img_h
+        w = float(w)/img_w
+        h = float(h)/img_h
         ann_file.write( str(label) + " " + str(x) + " " + str(y) + " " + str(w) + " " + str(h) + "\n") 
     
     ann_file.close() 
@@ -310,7 +321,7 @@ def save_augmentation(img, boxes, augmented_path, total_frames):
 
 
 
-def augment_data(train_data_text_file, raw_path, augmented_path, last_frame):
+def augment_data(train_data_text_file, augmented_path):
     #1. copy the images from training dataset
     #copy_for_augment(train_data_text_file, raw_path, augmented_path, last_frame)
 
@@ -335,14 +346,15 @@ def augment_data(train_data_text_file, raw_path, augmented_path, last_frame):
     hue = createTechnique("raise_hue", {"power" : 0.9})
     augmentor.addTransformer(transformer(hue))
 
-    total_frames = TOTAL_FRAMES
+    total_frames = constants.TOTAL_FRAMES
     frames = []
+    
     for fname in os.listdir(augmented_path):
         if fname.endswith(".jpg"):
             frames.append(fname)
 
     for fr in frames:   
-        img, boxes = load_boxes(augmented_path + "/" + fr,augmented_path + "/" + fr[:-3] + "txt")
+        img, boxes = load_boxes(augmented_path + "/" + fr, augmented_path + "/" + fr[:-3] + "txt")
         
         ver_img, ver_boxes = aug_operation(vFlip, transformer, img, boxes)
         save_augmentation(ver_img, ver_boxes, augmented_path, total_frames)
@@ -367,18 +379,24 @@ def augment_data(train_data_text_file, raw_path, augmented_path, last_frame):
 
 
 
-#extract_frames("/home/oliver/School/THESIS/data/dataset/japan_2_batch/chosen.mp4", \
-#               "/home/oliver/School/THESIS/data/dataset/frames")
+##extract_frames("/home/oliver/School/THESIS/data/japan_2_batch/chosen.mp4", \
+ #              "/home/oliver/School/THESIS/data/dataset/frames")
 
 
-#extract_annotations("/home/oliver/School/THESIS/data/dataset/japan_2_batch/json/annotations/instances_default.json", \
-#                    "/home/oliver/School/THESIS/data/dataset/annotations")
+#extract_annotations("/home/oliver/School/THESIS/data/japan_2_batch/json/annotations/instances_default.json", \
+#                    "/home/oliver/School/THESIS/data/dataset/annotations", "japan")
 
-test_annotaion("/home/oliver/School/THESIS/data/dataset")
+#extract_annotations("/home/oliver/School/THESIS/data/honk_kong/annotations/instances_default.json", \
+#                    "/home/oliver/School/THESIS/data/dataset/annotations", "honk-kong")
 
-#test_annotaion("/home/oliver/School/THESIS/data/japan_used")
-#test_mathcing_files("/home/oliver/School/THESIS/data/dataset/annotations", \
-                    #"/home/oliver/School/THESIS/data/dataset/frames")
+#extract_annotations("/home/oliver/School/THESIS/data/japan/Data/japan_letiste/json/annotations/instances_default.json", \
+#                    "/home/oliver/School/THESIS/data/dataset/annotations", "japan")
+
+#test_annotaion("/home/blaskoli/dataset")
+test_annotaion("/home/oliver/School/THESIS/letisni-stojanka/src/aug")
+
+#augment_data("", "/home/oliver/School/THESIS/letisni-stojanka/src/aug")
+#test_mathcing_files("/home/blaskoli/dataset/annotations", "/home/blaskoli/dataset/frames")
 
 #test_annotaion("/home/oliver/School/THESIS/letisni-stojanka/augmented_frames")
 #test_mathcing_files("/home/oliver/School/THESIS/data/dataset/annotations", \

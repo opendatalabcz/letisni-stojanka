@@ -14,12 +14,16 @@ TEST_FRAMES = "/home/oliver/School/THESIS/data/hong_kong/test_frames"
 TRAINING_DATA_PATH = "../model/train.txt"
 TEST_DATA_PATH = "../model/test.txt"
 
-#TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/test_videos/hong_kong_train.mp4"
 #TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/japan/Data/japan_letiste/raw_mp4/japan_test.mp4"
 TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/japan_2_batch/chosen_test.mp4"
+
+
+#TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/test_videos/hong_kong_train.mp4"
+#TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/japan/Data/japan_letiste/raw_mp4/japan_test.mp4"
+#TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/japan_2_batch/chosen_test.mp4"
 #TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/japan_2_batch/chosen_test2.mp4"
 #TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/test_videos/hong_kong_train.mp4"
-#TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/test_videos/japan_test_3.mp4"
+##TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/test_videos/japan_test_3.mp4"
 OUTPUT_TEST_VIDEO = "/home/oliver/School/THESIS/data/test_videos/japan_test3_output.mp4"
 
 class App:
