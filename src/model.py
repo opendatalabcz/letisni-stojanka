@@ -9,24 +9,6 @@ from threading import Thread
 import constants
 from queue import Queue
 
-IMG_W = 1278
-IMG_H = 720
-
-CONFIG_PATH = "../model/yolo-obj.cfg"
-WEIGHTS_PATH = "../model/yolo-obj_last.weights"
-LABELS_PATH = "../model/obj.names"
-TEST_FRAMES = "/home/oliver/School/THESIS/data/hong_kong/test_frames"
-TRAINING_DATA_PATH = "../model/train.txt"
-TEST_DATA_PATH = "../model/test.txt"
-
-#TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/test_videos/hong_kong_train.mp4"
-TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/japan/Data/japan_letiste/raw_mp4/japan.mp4"
-#TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/japan_2_batch/chosen_test.mp4"
-#TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/japan_2_batch/chosen_test2.mp4"
-#TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/test_videos/hong_kong_train.mp4"
-#TEST_VIDEO_PATH = "/home/oliver/School/THESIS/data/test_videos/japan_test_3.mp4"
-OUTPUT_TEST_VIDEO = "/home/oliver/School/THESIS/data/test_videos/japan_test3_output.mp4"
-
 def get_label(class_id):
     """"Returns the name of the class corresponding to the class_id."""
     return constants.CLASS_NAMES[str(class_id)]
@@ -43,6 +25,22 @@ def transform_paths(old_paths_fname, new_path):
         new_fnames.append(new_path + "/" + name[:-1])
     return new_fnames
 
+def yolo_to_cv(x, y, w, h, img_w, img_h):
+    l = int((x - w / 2) * img_w)
+    r = int((x + w / 2) * img_w)
+    t = int((y - h / 2) * img_h)
+    b = int((y + h / 2) * img_h)
+    
+    if l < 0:
+        l = 0
+    if r > img_w - 1:
+        r = img_w - 1
+    if t < 0:
+        t = 0
+    if b > img_h - 1:
+        b = img_h - 1
+
+    return l, r, t, b
 
 class Bbox:
     """Represents bbox - rectangle that is drawn around detected objects"""
@@ -56,7 +54,7 @@ class Bbox:
         return [int(self.x), int(self.y), int(self.w), int(self.h)]
 
     def get_cv2_format(self):
-        return (self.x, self.y), (self.x + self.w, self.y + self.h)
+        return yolo_to_cv(self.x, self.y, self.w, self.h, constants.IMG_W, constants.IMG_H)
 
     def get_text_format(self):
         return "[{},{},{},{}]".format(self.x, self.y, self.w, self.h)
@@ -101,12 +99,13 @@ class Inference:
         """Draws inferenced objects into the image, if show == True, also displays it"""
         for d in self.detections:
             color = (34,139,34)
-            first, sec = d.bbox.get_cv2_format()
-            cv2.rectangle(self.img, first, sec, color, 2)
+            start_x, start_y, w, h = d.bbox.unwrap()
+            cv2.rectangle(self.img, (start_x, start_y), (start_x+w,start_y+h), color, 2)
             text = "{}".format(d.label)
-            cv2.putText(self.img, text, (d.bbox.x, d.bbox.y -5),                  
+            cv2.putText(self.img, text, (start_x, start_y -5),                  
             cv2.FONT_HERSHEY_SIMPLEX,0.5, color, 1)
 
+        #showing also grounding truths for testing purposes
         if ia != None:
             for gt in ia.gts:
                 color = (128, 0, 0)
@@ -164,9 +163,12 @@ class Model:
                 confidence = scores[class_id]
                 if confidence > 0.5:
                     box = detection[0:4] * np.array([In.img_w, In.img_h, In.img_w, In.img_h])
-                    #x = int(centerX - (width / 2))
-                    #y = int(centerY - (height / 2))   
-                    b = Bbox(box.astype("int"))
+                    center_x, center_y, w, h = box.astype("int")
+                    
+                    x = int(center_x - (w / 2))
+                    y = int(center_y - (h / 2))
+
+                    b = Bbox([x,y,int(w),int(h)])
                     In.add_detection(Detection(b, confidence, class_id))
         
         In.perform_nms() 

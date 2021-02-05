@@ -216,6 +216,16 @@ def test_tracker():
     assert(4 not in t.objects)
     assert(7 not in t.objects)
 
+    #slight update
+    t.update([(10,50,30,80)])
+    assert(t.next_id == 9)
+    assert((t.objects[8] == (20, 65)).all())
+    t.update([(30,80,60,110)])
+    assert(t.next_id == 9)
+    assert((t.objects[8] == (45, 95)).all())
+    
+    
+
     return True
 
 

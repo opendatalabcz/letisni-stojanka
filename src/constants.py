@@ -10,12 +10,6 @@ CLASS_NAMES = {"0": "airplane",\
                "9": "passenger-bus", \
                "10": "person",}
 
-VIDEO_PATH = "/home/oliver/School/THESIS/data/hong_kong/hong_kong.mp4"
-JSON_PATH = "/home/oliver/School/THESIS/data/hong_kong/instances_default.json"
-EXAMPLE_IMG = "/home/oliver/School/THESIS/data/dataset/frames/frame_247098.jpg"
-ANNOTATION_PATH = "/home/oliver/School/THESIS/data/dataset/annotations"
-FRAMES_PATH = "/home/blaskoli/dataset/frames"
-
 DATA_PATH = "/home/oliver/School/THESIS/data/dataset"
 OUT_PATH = "/home/blaskoli/dataset/frames"
 
@@ -30,6 +24,7 @@ TEST_STOP = 77423
 NORMAL_FR = 30
 IMP_FR = 10
 TEST_FR = 10
+
 IMPORTANT_SCENES = {"111809": "113722",
                     "119922": "124422",
                     "126422": "127272",
@@ -63,3 +58,10 @@ NOT_SCENES = {"104422": "107422",
 TRAIN_FILE = "/home/blaskoli/cfg/train.txt"
 TEST_FILE = "/home/blaskoli/cfg/test.txt"
 VALID_FILE = "/home/blaskoli/cfg/valid.txt"
+
+IMG_W = 1280
+IMG_H = 720
+
+CONFIG_PATH = "/home/oliver/School/THESIS/letisni-stojanka/model/yolo-obj.cfg"
+WEIGHTS_PATH = "/home/oliver/School/THESIS/letisni-stojanka/model/yolo-obj_best.weights"
+LABELS_PATH = "/home/oliver/School/THESIS/letisni-stojanka/model/obj.names"
