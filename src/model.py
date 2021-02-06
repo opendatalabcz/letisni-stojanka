@@ -8,6 +8,7 @@ import time
 from threading import Thread
 import constants
 from queue import Queue
+from bounding_box import bounding_box as bb
 
 def get_label(class_id):
     """"Returns the name of the class corresponding to the class_id."""
@@ -100,10 +101,12 @@ class Inference:
         for d in self.detections:
             color = (34,139,34)
             start_x, start_y, w, h = d.bbox.unwrap()
-            cv2.rectangle(self.img, (start_x, start_y), (start_x+w,start_y+h), color, 2)
-            text = "{}".format(d.label)
-            cv2.putText(self.img, text, (start_x, start_y -5),                  
-            cv2.FONT_HERSHEY_SIMPLEX,0.5, color, 1)
+            
+            bb.add(self.img, start_x, start_y, start_x+w, start_y+h, d.label)
+            #cv2.rectangle(self.img, (start_x, start_y), (start_x+w,start_y+h), color, 2)
+            #text = "{}".format(d.label)
+            #cv2.putText(self.img, text, (start_x, start_y -5),                  
+            #cv2.FONT_HERSHEY_SIMPLEX,0.5, color, 1)
 
         #showing also grounding truths for testing purposes
         if ia != None:

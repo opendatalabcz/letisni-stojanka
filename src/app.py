@@ -5,6 +5,8 @@ import argparse
 import imutils
 import object_tracking
 import time
+import pandas as pd
+import altair as alt
 
 class App:
     """Class representing the key object airport apron detector application"""
@@ -46,6 +48,7 @@ class App:
 
 
     def run(self):
+        c = 0 
         total_frames = self.total_frames()
         info_printed = False
         while True:
@@ -55,8 +58,11 @@ class App:
 
             if not grabbed:
                 break
-
-            In = self.model.inference_img(frame, "frame")
+            if c % 30 == 0:
+                In = self.model.inference_img(frame, "frame")
+            else:
+                In.img = frame
+            
             for d in In.detections:
                 start_x, start_y, w, h = d.bbox.unwrap()
                 bboxes.append([start_x, start_y, start_x + w, start_y + h])
@@ -80,17 +86,42 @@ class App:
             self.writer.write(In.img)
             self.shown_frames += 1 
             end = time.time()
+            c += 1
             
             if not info_printed:
                 self.print_time(start, end, total_frames)
                 print('Width = ', self.stream.get(3),' Height = ', self.stream.get(4),' fps = ', self.stream.get(5))
                 info_printed = True
 
+        self.tracker.end_vp_tracking()
         cv2.destroyAllWindows()
         self.stream.release()
         self.writer.release()
+
+    def visualize_timelime(self):
+        lfrom = []
+        lto = []
+        lid = []
+
+        dps = self.tracker.vis_data_points
+        for id, dp in dps.items():
+            for app in dp.appereances:
+                lfrom.append(app[0])
+                lto.append(app[1])
+                lid.append(str(id))
+        
+        df = pd.DataFrame(list(zip(lfrom, lto, lid)), columns=["from", "to", "id"])
+        chart = alt.Chart(df).mark_bar().encode(x = "from", x2="to", y="id", color=alt.Color("id", \
+                                                scale=alt.Scale(scheme='dark2')))
+        chart.save("chart.png")
+
+
+
+
+
 
 if __name__ == "__main__":
     m = model.Model(constants.CONFIG_PATH, constants.WEIGHTS_PATH, constants.LABELS_PATH)
     app = App(m)
     app.run()
+    app.visualize_timelime()

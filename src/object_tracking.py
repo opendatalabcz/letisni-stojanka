@@ -3,6 +3,17 @@ from scipy.spatial import distance as dist
 from collections import OrderedDict
 import numpy as np
 
+class VisDataPoint():
+    def __init__(self, id, starting_frame):
+        self.id = id
+        self.current_starting_frame = starting_frame
+        self.appereances = []
+    
+    def add_appereance(self, ap):
+        self.appereances.append(ap)
+        
+
+
 #inspired by blog post: https://www.pyimagesearch.com/2018/07/23/simple-object-tracking-with-opencv/
 class Tracker():
     """Class represents object tracker, based on the centroid tracking algorithm described in the thesis."""
@@ -22,10 +33,16 @@ class Tracker():
         #after reaching the value, the algo proclaims that the object has disappeared from the scene for good
         self.max_not_seen = max_not_seen
 
+        self.vis_data_points = OrderedDict()
+
+        self.current_frame = 0
+
     def register(self, centroid):
         """Registers newly detected object and assigns it new unique id."""
         self.objects[self.next_id] = centroid
         self.not_seen[self.next_id] = 0
+        self.vis_data_points[self.next_id] = VisDataPoint(self.next_id, self.current_frame)
+
         #update unique id
         self.next_id += 1
 
@@ -33,6 +50,21 @@ class Tracker():
         """Deregisters object that hasn't been present for max_not_seen number of consecutive frames."""
         del self.objects[id]
         del self.not_seen[id]
+
+    def register_appereance(self, id):
+        dp = self.vis_data_points[id]
+        if dp.current_starting_frame == -1:
+            return
+        
+        dp.add_appereance((dp.current_starting_frame, self.current_frame))
+        dp.current_starting_frame = -1
+        self.vis_data_points[id] = dp
+
+    def end_vp_tracking(self):
+        for id, vp in self.vis_data_points.items():
+            if vp.current_starting_frame != -1:
+                vp.add_appereance((vp.current_starting_frame, self.current_frame))
+                vp.current_starting_frame = -1
 
     def update(self, bboxes):
         """Handles the cetroid tracing, invoked on each frame."""
@@ -45,9 +77,12 @@ class Tracker():
             for id in list(self.not_seen.keys()):
                 self.not_seen[id] += 1
 
+                self.register_appereance(id)
+
                 if self.not_seen[id] > self.max_not_seen:
                     self.deregister(id)
             
+            self.current_frame += 1
             return self.objects
         
         #case when some objects has been detected in the frame
@@ -96,6 +131,9 @@ class Tracker():
                 self.objects[object_id] = new_centroids[col]
                 self.not_seen[object_id] = 0
 
+                if self.vis_data_points[object_id].current_starting_frame == -1:
+                    self.vis_data_points[object_id].current_starting_frame = self.current_frame
+
                 #we have examined current object at index row and new centroid at index col
                 used_rows.add(row)
                 used_cols.add(col) 
@@ -110,6 +148,7 @@ class Tracker():
                     #increment not seen value
                     object_id = ids[row]
                     self.not_seen[object_id] += 1
+                    self.register_appereance(object_id)
 
                     #check if reached max_non_seen
                     if self.not_seen[object_id] > self.max_not_seen:
@@ -122,7 +161,10 @@ class Tracker():
                     #increment not seen value
                     object_id = ids[row]
                     self.not_seen[object_id] += 1
+                    self.register_appereance(object_id)
 
+        
+        self.current_frame += 1
         return self.objects
             
 
@@ -225,7 +267,80 @@ def test_tracker():
     assert((t.objects[8] == (45, 95)).all())
     
     
+    #testing data collection
+    t2 = Tracker()
+    t2.update([])
+    assert(len(t2.vis_data_points) == 0)
+    t2.update([(10,50,30,80)])
+    assert(len(t2.vis_data_points) == 1)
+    t2.update([])
+    assert(len(t2.vis_data_points) == 1)
+    assert(t2.vis_data_points[0].current_starting_frame == -1)
+    assert(t2.vis_data_points[0].appereances[0] == (1,2))
+    t2.update([])
+    assert(len(t2.vis_data_points) == 1)
+    assert(t2.vis_data_points[0].current_starting_frame == -1)
+    assert(t2.vis_data_points[0].appereances[0] == (1,2))
+    assert(len(t2.vis_data_points[0].appereances) == 1)
+    t2.update([(10,50,30,80)])
+    assert(len(t2.vis_data_points) == 1)
+    assert(t2.vis_data_points[0].current_starting_frame == 4)
+    t2.update([(10,50,30,80)])
+    assert(len(t2.vis_data_points) == 1)
+    assert(t2.vis_data_points[0].current_starting_frame == 4)
+    t2.update([(11,51,32,82)])
+    assert(len(t2.vis_data_points) == 1)
+    assert(t2.vis_data_points[0].current_starting_frame == 4)
+    t2.update([])
+    assert(len(t2.vis_data_points) == 1)
+    assert(t2.vis_data_points[0].current_starting_frame == -1)
+    assert(len(t2.vis_data_points[0].appereances) == 2)
+    assert(t2.vis_data_points[0].appereances[1] == (4,7))
 
+    t2.update([(11,51,32,82), (20,30,50,60)])
+    assert(len(t2.vis_data_points) == 2)
+    assert(t2.vis_data_points[1].current_starting_frame == 8)
+    assert(len(t2.vis_data_points[1].appereances) == 0)
+
+    t2.update([(11,51,32,82)])
+    assert(len(t2.vis_data_points) == 2)
+    assert(t2.vis_data_points[1].current_starting_frame == -1)
+    assert(len(t2.vis_data_points[1].appereances) == 1)
+    assert(t2.vis_data_points[1].appereances[0] == (8,9))
+
+    t2.update([(11,51,32,82)])
+    assert(len(t2.vis_data_points) == 2)
+    assert(t2.vis_data_points[1].current_starting_frame == -1)
+    assert(len(t2.vis_data_points[1].appereances) == 1)
+    assert(t2.vis_data_points[1].appereances[0] == (8,9))
+
+    t2.update([(11,51,32,82), (20,30,50,60)])
+    for _ in range(51):
+        t2.update([(11,51,32,82)])
+    assert(len(t2.vis_data_points) == 2)
+    assert(t2.vis_data_points[1].current_starting_frame == -1)
+    assert(len(t2.vis_data_points[1].appereances) == 2)
+    assert(t2.vis_data_points[1].appereances[1] == (11,12))
+    assert(t2.vis_data_points[0].current_starting_frame == 8)
+    
+    t2.update([(11,51,32,82), (20,30,50,60)])
+    t2.update([(20,30,50,60)])
+    assert(t2.vis_data_points[0].current_starting_frame == -1)
+    assert(t2.vis_data_points[0].appereances[2] == (8,64))
+    
+    t3 = Tracker()
+    t3.update([])
+    t3.update([(11,51,32,82), (20,30,50,60)])
+    t3.update([(11,51,32,82), (20,30,50,60)])
+    assert(len(t3.vis_data_points) == 2)
+    assert(len(t3.vis_data_points[0].appereances) == 0)
+    assert(t3.vis_data_points[0].current_starting_frame  == 1)
+    t3.end_vp_tracking()
+    assert(len(t3.vis_data_points) == 2)
+    assert(len(t3.vis_data_points[0].appereances) == 1)
+    assert(t3.vis_data_points[0].appereances[0] == (1,3))
+
+    
     return True
 
 
