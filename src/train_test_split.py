@@ -4,9 +4,6 @@ import math
 
 import constants
 
-TRAIN_FRAME_RATE = 30
-VALID_FRAME_RATE = 2
-
 def transfer_path(old_path, new_path):
     """Changes paths to files from local machine to computing cluster"""
     splits = old_path.split("/")
