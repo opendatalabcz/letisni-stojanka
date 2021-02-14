@@ -21,14 +21,13 @@ class App:
         self.tracker = object_tracking.Tracker()
         self.fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         self.writer = cv2.VideoWriter(constants.OUT_PATH + "res2.mp4", self.fourcc, 30,(constants.IMG_W, constants.IMG_H), True)
-
+        
     def parse_args(self):
         """Parsing the input arguments."""
-        parser = argparse.ArgumentParser(description = "Key object airport apron detector application app")
+        parser = argparse.ArgumentParser(description = "Key object airport apron detector")
         parser.add_argument("-i", "--input", help="path to the input video file", required=True)
-        parser.add_argument("-c", "--confidence", help="confidence threshold for predicting", type=float, default=0.5)
         parser.add_argument("-m", "--model", help="trained model to be used, options: tiny/yolov4", default="yolov4")
-        parser.add_argument("-s", "--skip", help="inference will be run onlu on every n-th frame for speed improvement", type=int, default=1)
+        parser.add_argument("-f", "--freq", help="inference will be performed only on every n-th frame for speed improvement", type=int, default=1)
         
 
         
@@ -37,9 +36,11 @@ class App:
     def load_model(self):
         """Loads the chosen trained model by user"""
         if self.args.model == "yolov4":
-            m = model.Model(constants.YOLOV4_CONFIG_PATH, constants.YOLOV4_WEIGHTS_PATH, constants.LABELS_PATH)
+            m = model.Model(constants.YOLOV4_CONFIG_PATH, constants.YOLOV4_WEIGHTS_PATH, constants.YOLO_V4_LABELS_PATH)
+        elif self.args.model == "tiny":
+            m = model.Model(constants.TINY_CONFIG_PATH, constants.TINY_WEIGHTS_PATH, constants.TINY_LABELS_PATH)
         else:
-            m = model.Model(constants.TINY_CONFIG_PATH, constants.TINY_WEIGHTS_PATH, constants.LABELS_PATH)
+            raise ValueError("Input model not recognized.")
         return m
 
     def draw_frame_num(self, frame):
@@ -64,16 +65,16 @@ class App:
         else:
             mod = "YoloV4"
 
-        if self.args.skip == 1:
+        if self.args.freq == 1:
             skip = "[INFO] Running inference on every frame"
         else:
-            skip = "[INFO] Running inference on every {}-th frame".format(self.args.skip)
+            skip = "[INFO] Running inference on every {}-th frame".format(self.args.freq)
 
         print(skip)
         print("[INFO] loaded model {}".format(mod))
         print("[INFO] frame width - {} | frame height - {} | FPS: {}".format(self.stream.get(3),self.stream.get(4),self.stream.get(5)))
         print("[INFO] processing one frame in {:.4f} seconds".format(elap))
-        print("[INFO] estimated total time to finish: {:.4f} seconds".format((elap * total_frames)/self.args.skip)) 
+        print("[INFO] estimated total time to finish: {:.4f} seconds".format((elap * total_frames)/self.args.freq)) 
 
     def print_final_info(self, elap):
         """Final statistics."""
@@ -91,7 +92,7 @@ class App:
     def run(self):
         """Main loop of the application"""
         run_start = time.time()
-        skip = self.args.skip
+        skip = self.args.freq
         c = 0 
         
         total_frames = self.total_frames()
@@ -170,6 +171,10 @@ class App:
 
 
 if __name__ == "__main__":
-    app = App()
-    app.run()
-    app.visualize_timelime()
+    try:
+        app = App()
+        app.run()
+        app.visualize_timelime()
+    except ValueError as err:
+        print(constants.HELP_MSG)
+    

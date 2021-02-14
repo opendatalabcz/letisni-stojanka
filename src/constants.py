@@ -61,12 +61,15 @@ VALID_FILE = "/home/blaskoli/cfg/valid.txt"
 IMG_W = 1280
 IMG_H = 720
 
-YOLOV4_CONFIG_PATH = "/home/oliver/School/THESIS/letisni-stojanka/model_yolov4/yolo-obj.cfg"
-YOLOV4_WEIGHTS_PATH = "/home/oliver/School/THESIS/letisni-stojanka/model_yolov4/yolo-obj_best.weights"
+YOLOV4_CONFIG_PATH = "../models/yoloV4/yoloV4.cfg"
+YOLOV4_WEIGHTS_PATH = "../models/yoloV4/yoloV4.weights"
 
-TINY_CONFIG_PATH = "/home/oliver/School/THESIS/letisni-stojanka/model_tiny/yolov4-tiny-custom.cfg"
-TINY_WEIGHTS_PATH = "/home/oliver/School/THESIS/letisni-stojanka/model_tiny/yolov4-tiny-custom_best.weights .weights"
+TINY_CONFIG_PATH = "../models/yoloV4_tiny/yoloV4-tiny.cfg"
+TINY_WEIGHTS_PATH = "../models/yoloV4_tiny/yoloV4-tiny.weights"
 
-LABELS_PATH = "/home/oliver/School/THESIS/letisni-stojanka/model_yolov4/obj.names"
+YOLO_V4_LABELS_PATH = "../models/yoloV4/obj.names"
+TINY_LABELS_PATH = "../models/yoloV4_tiny/obj.names"
 
-OUT_PATH = "/home/oliver/School/THESIS/letisni-stojanka/front_end/my-app/src/video/"
+OUT_PATH = "../front_end/my-app/src/video/"
+
+HELP_MSG = "[INFO] Wrong input format, run python app.py -h to see correct input format."

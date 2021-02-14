@@ -197,7 +197,7 @@ class ImageAnnotation:
     def add_gt(self, gt):
         self.gts.append(gt)
 
-class Evaluator:
+class Tester:
     """Class for model evaluation"""
     def __init__(self, model, fnames):
         self.model = model
@@ -240,21 +240,5 @@ class Evaluator:
             In.show(True, self.gt[fname])
         
 
-
-    def compute_iou(self, bboxA, bboxB):
-        """Computer IOU between two bboxes"""
-        xA = max(bboxA.x, bboxB.x)
-        yA = max(bboxA.y, bboxB.y)
-        xB = min(bboxA.w, bboxB.w)
-        yB = min(bboxA.h, bboxB.h)
-        
-
-        intersection = max(0, xB - xA + 1) * max(0, yB - yA + 1)
-        bboxA_area = (bboxA.w - bboxA.x + 1) * (bboxA.h - bboxA.y + 1)
-        bboxB_area = (bboxB.w - bboxB.x + 1) * (bboxB.h - bboxB.y + 1)
-        
-        iou = intersection / float(bboxA_area + bboxB_area - intersection)
-
-        return iou
 
     
