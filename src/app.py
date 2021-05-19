@@ -101,6 +101,7 @@ class App:
         while True:
             start = time.time()
             bboxes = []
+            labels = []
             (grabbed, frame) = self.stream.read()
 
             if not grabbed:
@@ -116,6 +117,8 @@ class App:
             for d in In.detections:
                 start_x, start_y, w, h = d.bbox.unwrap()
                 bboxes.append([start_x, start_y, start_x + w, start_y + h])
+                labels.append(d.label)
+
             
             #save detections
             In.show(False)
@@ -123,7 +126,7 @@ class App:
             In.img = self.draw_frame_num(In.img)
             
             #object tracking visualization
-            objects = self.tracker.update(bboxes)
+            objects = self.tracker.update(bboxes, labels)
             for(object_id, centroid) in objects.items():
                 text = "ID {}".format(object_id)
                 cv2.putText(frame, text, (centroid[0] - 10, centroid[1] - 10),
@@ -161,11 +164,11 @@ class App:
             for app in dp.appereances:
                 lfrom.append(app[0]/30)
                 lto.append(app[1]/30)
-                lid.append(str(id))
+                lid.append(str(dp.label))
         
         #timeline chart
-        df = pd.DataFrame(list(zip(lfrom, lto, lid)), columns=["from", "to", "id"])
-        chart = alt.Chart(df).mark_bar().encode(alt.X("from", title="Timeline(seconds)"), alt.X2("to", title = ""), y="id", color=alt.Color("id", \
+        df = pd.DataFrame(list(zip(lfrom, lto, lid)), columns=["from", "to", "label"])
+        chart = alt.Chart(df).mark_bar().encode(alt.X("from", title="Timeline(seconds)"), alt.X2("to", title = ""), y="label", color=alt.Color("label", \
                                                 scale=alt.Scale(scheme='dark2')))
         chart.save(constants.OUT_PATH + "chart_timeline.png")
 
